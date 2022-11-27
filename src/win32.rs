@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use windows::core::{implement, Error, InParam, Result, GUID, HRESULT};
+use windows::core::{implement, Error, IUnknown, InParam, Result, GUID, HRESULT};
 use windows::Win32::Foundation::{HANDLE_PTR, POINT};
 
 use windows::Win32::System::Com::{CoCreateInstance, CLSCTX_INPROC_SERVER};
@@ -104,10 +104,15 @@ impl EasyTablet {
     ///
     /// <br>
     ///
-    /// **Note**: This functions requires that [`CoInitializeEx`](https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex) has previously been called.
+    /// **Note**: This functions assumes that [`CoInitializeEx`](https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex) has previously been called.
     /// - Refer to [`init_options`] for more info.
-    pub fn init(hwnd: HANDLE_PTR) -> EasyTabResult<Self> {
-        EasyTablet::init_options(hwnd, EasyTabOptions::default())
+
+    // pub fn init(hwnd: HANDLE_PTR) -> EasyTabResult<Self> {
+    //     EasyTablet::init_options(hwnd, EasyTabOptions::default())
+    // }
+
+    pub fn init<W: Into<usize>>(hwnd: W) -> EasyTabResult<Self> {
+        EasyTablet::init_options(HANDLE_PTR(hwnd.into()), EasyTabOptions::default())
     }
 
     /// Initialises a tablet with the given options.
@@ -119,7 +124,7 @@ impl EasyTablet {
     ///
     /// <br>
     ///
-    /// **Note**: This functions requires that [`CoInitializeEx`](https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex) has previously been called.
+    /// **Note**: This functions assumes that [`CoInitializeEx`](https://docs.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex) has previously been called.
     ///
     /// ```
     /// // before calling `init_options`
@@ -146,6 +151,8 @@ impl EasyTablet {
         let slf = Self(Rc::new(__InnerTablet {
             stylus,
             opts,
+
+            on: Cell::default(),
 
             active: Cell::default(),
             x: Cell::default(),
@@ -183,18 +190,22 @@ impl EasyTablet {
         Ok(())
     }
 
+    pub fn on(&self, cb: Box<dyn Fn(WinTabEvent)>) {
+        self.on.set(Some(cb))
+    }
+
     /// Returns whether a finger or stylus is activating the digitiser.
     pub fn active(&self) -> bool {
         self.active.get()
     }
 
     /// Returns the x position where the finger or stylus is making contact with the digitiser.
-    pub fn x(&self) -> u32 {
+    pub fn x(&self) -> i32 {
         self.x.get()
     }
 
     /// Returns the y position where the finger or stylus is making contact with the digitiser.
-    pub fn y(&self) -> u32 {
+    pub fn y(&self) -> i32 {
         self.y.get()
     }
 
@@ -204,21 +215,43 @@ impl EasyTablet {
     }
 }
 
+// TODO: Convert to trait?
 impl __InnerTablet {
     // handles a stylus event
     fn handle_event(&self, event: WinTabEvent) -> Result<()> {
         match event {
-            WinTabEvent::StylusDown => self.active.set(true),
+            WinTabEvent::StylusActive => self.active.set(true),
+            WinTabEvent::StylusInactive => self.active.set(false),
+
+            WinTabEvent::StylusButtonDown(x, y) | WinTabEvent::StylusButtonUp(x, y) => {
+                self.x.set(x);
+                self.y.set(y);
+            }
             _ => todo!(),
         }
+
+        // let on_ptr = self.on.
+
+        // if let Some(on) = on_ptr.into() {
+        //     let evfn = unsafe { on.as_ref().unwrap() };
+
+        // }
+
+        // if let Some(on) = &self.on.get_mut() {
+        //     (*on)(event);
+        // }
 
         Ok(())
     }
 }
 
+#[derive(Debug)]
 pub enum WinTabEvent {
-    StylusDown,
-    StylusUp,
+    StylusActive,
+    StylusInactive,
+    //...............x....y
+    StylusButtonDown(i32, i32),
+    StylusButtonUp(i32, i32),
 }
 
 // the plugin added to the real time stylus to allow getting real time events from the stylus (asynchronously)
@@ -237,19 +270,23 @@ impl IStylusPlugin_Impl for AsyncStylusHandler {
 
     fn RealTimeStylusDisabled(
         &self,
-        _: &Option<IRealTimeStylus>,
+        pirtssrc: &Option<IRealTimeStylus>,
         _: u32,
         _: *const u32,
     ) -> Result<()> {
-        Ok(())
+        debug_assert!(pirtssrc.as_ref().unwrap() == &self.0.as_ref().stylus);
+
+        self.0.as_ref().handle_event(WinTabEvent::StylusInactive)
     }
 
     fn StylusInRange(&self, _: &Option<IRealTimeStylus>, _: u32, _: u32) -> Result<()> {
         Ok(())
     }
 
-    fn StylusOutOfRange(&self, _: &Option<IRealTimeStylus>, _: u32, _: u32) -> Result<()> {
-        Ok(())
+    fn StylusOutOfRange(&self, pirtssrc: &Option<IRealTimeStylus>, _: u32, _: u32) -> Result<()> {
+        debug_assert!(pirtssrc.as_ref().unwrap() == &self.0.as_ref().stylus);
+
+        self.0.as_ref().handle_event(WinTabEvent::StylusInactive)
     }
 
     fn StylusDown(
@@ -260,47 +297,56 @@ impl IStylusPlugin_Impl for AsyncStylusHandler {
         _: *const i32,
         _: *mut *mut i32,
     ) -> Result<()> {
-        debug_assert!(unsafe { pirtssrc.as_ref().unwrap_unchecked() } == &self.0.as_ref().stylus);
+        // checking that the stylus receiving events is the same stylus the tablet is pointing to
+        debug_assert!(pirtssrc.as_ref().unwrap() == &self.0.as_ref().stylus);
 
-        self.0.as_ref().handle_event(WinTabEvent::StylusDown)
+        self.0.as_ref().handle_event(WinTabEvent::StylusActive)
     }
 
     fn StylusUp(
         &self,
         pirtssrc: &Option<IRealTimeStylus>,
-        pstylusinfo: *const StylusInfo,
-        cpropcountperpkt: u32,
-        ppacket: *const i32,
-        ppinoutpkt: *mut *mut i32,
+        _: *const StylusInfo,
+        _: u32,
+        _: *const i32,
+        _: *mut *mut i32,
     ) -> Result<()> {
-        // debug_assert!(unsafe { pirtssrc.as_ref().unwrap_unchecked() == &(*self.0).stylus });
+        debug_assert!(pirtssrc.as_ref().unwrap() == &self.0.as_ref().stylus);
 
-        println!("StylusUp");
-
-        // unsafe { (&*self.0).handle_event(WinTabEvent::StylusUp) }
-        Ok(())
+        self.0.as_ref().handle_event(WinTabEvent::StylusInactive)
     }
 
+    // TODO: test with more tablets - with my tablet, the GUID for the button doesnt seem to be any real, registered COM class.
     fn StylusButtonDown(
         &self,
         pirtssrc: &Option<IRealTimeStylus>,
-        sid: u32,
-        pguidstylusbutton: *const GUID,
+        _: u32,
+        _: *const GUID, // what is this?
         pstyluspos: *mut POINT,
     ) -> Result<()> {
-        println!("StylusButtonDown");
-        Ok(())
+        debug_assert!(pirtssrc.as_ref().unwrap() == &self.0.as_ref().stylus);
+
+        let point = unsafe { &*pstyluspos };
+
+        self.0
+            .as_ref()
+            .handle_event(WinTabEvent::StylusButtonDown(point.x, point.y))
     }
 
     fn StylusButtonUp(
         &self,
         pirtssrc: &Option<IRealTimeStylus>,
-        sid: u32,
+        _: u32,
         pguidstylusbutton: *const GUID,
         pstyluspos: *mut POINT,
     ) -> Result<()> {
-        println!("StylusButtonUp");
-        Ok(())
+        debug_assert!(pirtssrc.as_ref().unwrap() == &self.0.as_ref().stylus);
+
+        let point = unsafe { &*pstyluspos };
+
+        self.0
+            .as_ref()
+            .handle_event(WinTabEvent::StylusButtonUp(point.x, point.y))
     }
 
     fn InAirPackets(
@@ -391,4 +437,5 @@ impl IStylusPlugin_Impl for AsyncStylusHandler {
     }
 }
 
+// `IStylusAsyncPlugin_Impl` is created by the `implement` macro
 impl IStylusAsyncPlugin_Impl for AsyncStylusHandler {}

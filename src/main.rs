@@ -4,6 +4,7 @@ use thiserror::Error;
 
 #[cfg(target_os = "windows")]
 pub mod win32;
+use win32::WinTabEvent;
 #[cfg(target_os = "windows")]
 pub use win32::WinTabletIndex;
 use windows::Win32::Foundation::HANDLE_PTR;
@@ -34,22 +35,24 @@ pub struct EasyTabOptions {
 
 // transparent, private wrapper struct since `EasyTablet` needs to wrapped in an `Rc`, but I don't want to expose the `Rc` to the user.
 // especially since it would require them to write `Rc<EasyTablet>` everywhere, rather than `EasyTablet`.
-
 /// Private inner struct, do not use. (Use [`EasyTablet`] instead)
 #[doc(hidden)]
 pub struct __InnerTablet {
     active: Cell<bool>,
-    x: Cell<u32>,
-    y: Cell<u32>,
+    x: Cell<i32>,
+    y: Cell<i32>,
     pressure: Cell<f32>,
 
     opts: EasyTabOptions,
 
     #[cfg(target_os = "windows")]
+    on: Cell<Option<Box<dyn Fn(WinTabEvent)>>>,
+
+    #[cfg(target_os = "windows")]
     stylus: IRealTimeStylus,
 }
 
-///
+/// TODO
 pub struct EasyTablet(Rc<__InnerTablet>);
 
 impl std::ops::Deref for EasyTablet {
@@ -83,10 +86,11 @@ fn main() {
         _ => panic!(""),
     };
 
-    let tablet =
-        EasyTablet::init(HANDLE_PTR(hwnd.hwnd as usize)).expect("tablet failed to initialize");
+    let tablet = EasyTablet::init(hwnd.hwnd as usize).expect("tablet failed to initialize");
 
     tablet.enable().expect("enable");
+
+    tablet.on(Box::new(|event| println!("new event {:#?}", event)));
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
