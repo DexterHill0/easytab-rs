@@ -8,7 +8,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 jobs:
   release-please:
@@ -21,15 +20,6 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-      - name: Pin release PR
-        if: steps.release.outputs.prs
-        run: |
-          echo '${{ steps.release.outputs.prs }}' | jq -r '.[].number' | while read num; do
-            gh issue pin "$num" || true
-          done
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
 
   publish:
     needs: release-please
