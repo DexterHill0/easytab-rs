@@ -71,7 +71,6 @@ pub enum TabletEvent {
     },
 }
 
-#[doc(hidden)]
 pub(crate) struct TabletInner {
     pub(crate) enabled: Cell<bool>,
     pub(crate) events: RefCell<VecDeque<TabletEvent>>,

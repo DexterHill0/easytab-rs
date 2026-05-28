@@ -6,9 +6,27 @@ edition = "2024"
 description = "A Rust crate built for vendor-agnostic interaction with pen & tablet devices."
 license = "MIT"
 repository = "https://github.com/DexterHill0/easytab-rs"
+keywords = ["tablet", "stylus", "pen", "input", "wacom"]
+categories = ["hardware-support", "os::windows-apis"]
+exclude = [
+    ".github/",
+    ".vscode/",
+    "release-please-config.json",
+    ".release-please-manifest.json",
+]
+readme = "README.md"
+
+[[example]]
+name = "basic"
+doc-scrape-examples = true
+
+[package.metadata.docs.rs]
+all-features = true
+default-target = "x86_64-pc-windows-msvc"
+targets = ["x86_64-pc-windows-msvc"]
 
 [dependencies]
-thiserror = "2.0.18"
+thiserror = "2"
 
 raw-window-handle = { version = "0.6", optional = true, features = ["std"] }
 
@@ -16,7 +34,7 @@ raw-window-handle = { version = "0.6", optional = true, features = ["std"] }
 raw-window-handle = ["dep:raw-window-handle"]
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.62.2"
+version = "0.62"
 features = [
     "Win32_Foundation",
     "Win32_System_Com",
@@ -27,4 +45,4 @@ features = [
 
 [dev-dependencies]
 easytab = { path = ".", features = ["raw-window-handle"] }
-winit = "0.30.13"
+winit = "0.30"

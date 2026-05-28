@@ -44,7 +44,9 @@ impl ApplicationHandler for App {
     }
 
     fn suspended(&mut self, _: &ActiveEventLoop) {
-        self.tablet.as_ref().inspect(|t| t.disable());
+        if let Some(t) = &self.tablet {
+            t.disable();
+        }
     }
 }
 
