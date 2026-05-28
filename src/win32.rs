@@ -14,8 +14,6 @@ use windows::Win32::UI::WindowsAndMessaging::{
 
 use crate::{EasyTabOptions, EasyTabResult, EasyTablet, TabletEvent, TabletInner};
 
-const SUBCLASS_ID: usize = 1;
-
 #[derive(Debug, Error, Clone)]
 pub enum WindowsError {
     #[error("failed to call CoInitializeEx ({0})")]
@@ -36,7 +34,7 @@ struct HwndData {
 
 fn cleanup_subclass(hwnd: HWND, subclass_data_ptr: usize) {
     unsafe {
-        let _ = RemoveWindowSubclass(hwnd, Some(h_wndproc), SUBCLASS_ID);
+        let _ = RemoveWindowSubclass(hwnd, Some(h_wndproc), subclass_data_ptr);
 
         drop(Box::from_raw(subclass_data_ptr as *mut HwndData));
     }
@@ -66,7 +64,7 @@ impl EasyTablet {
             tablet: Rc::clone(&inner),
         })) as usize;
 
-        let result = unsafe { SetWindowSubclass(hwnd_win, Some(h_wndproc), SUBCLASS_ID, ptr) };
+        let result = unsafe { SetWindowSubclass(hwnd_win, Some(h_wndproc), ptr, ptr) };
 
         if !result.as_bool() {
             unsafe { drop(Box::from_raw(ptr as *mut HwndData)) };
@@ -97,7 +95,6 @@ impl EasyTablet {
     }
 }
 
-#[cfg(target_os = "windows")]
 impl Drop for EasyTablet {
     fn drop(&mut self) {
         cleanup_subclass(self.data.hwnd, self.data.subclass_data_ptr);

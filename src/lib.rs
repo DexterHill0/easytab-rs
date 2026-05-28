@@ -1,8 +1,6 @@
-use std::{
-    cell::{Cell, RefCell},
-    collections::VecDeque,
-    rc::Rc,
-};
+use std::cell::{Cell, RefCell};
+use std::collections::VecDeque;
+use std::rc::Rc;
 
 use thiserror::Error;
 
@@ -93,6 +91,7 @@ impl EasyTablet {
             .as_raw();
 
         match raw {
+            #[cfg(target_os = "windows")]
             RawWindowHandle::Win32(h) => Self::init(h.hwnd.get() as usize),
             _ => Err(EasyTabError::UnsupportedPlatform),
         }
