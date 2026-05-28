@@ -11,7 +11,7 @@ raw-window-handle = { version = "0.6", optional = true, features = ["std"] }
 [features]
 raw-window-handle = ["dep:raw-window-handle"]
 
-[dependencies.windows]
+[target.'cfg(windows)'.dependencies.windows]
 version = "0.62.2"
 features = [
     "Win32_Foundation",

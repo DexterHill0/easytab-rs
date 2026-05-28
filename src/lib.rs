@@ -11,6 +11,9 @@ use win32::TabletData;
 #[cfg(target_os = "windows")]
 pub use win32::WindowsError;
 
+#[cfg(not(any(target_os = "windows")))]
+compile_error!("easytab is not yet implemented for this platform");
+
 #[derive(Error, Clone, Debug)]
 pub enum EasyTabError {
     #[cfg(target_os = "windows")]
