@@ -6,7 +6,7 @@
 `easytab` is a Rust crate built for vendor-agnostic interaction with pen & tablet devices. It aims to have a very simple interface that can be easily integrated with other code.
 
 ```toml
-easytab = "0.1.0"
+easytab = "0.2.0"
 ```
 
 ## Features
