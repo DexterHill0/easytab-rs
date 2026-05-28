@@ -7,6 +7,7 @@ on:
 
 jobs:
   fmt:
+    if: github.actor != 'github-actions[bot]'
     name: Format
     runs-on: ubuntu-latest
     steps:
@@ -17,6 +18,7 @@ jobs:
       - run: cargo fmt --check
 
   clippy:
+    if: github.actor != 'github-actions[bot]'
     name: Clippy (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -30,6 +32,7 @@ jobs:
       - run: cargo clippy -- -D warnings
 
   test:
+    if: github.actor != 'github-actions[bot]'
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -42,7 +45,7 @@ jobs:
 
   pr-title:
     name: Conventional commit
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
