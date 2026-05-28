@@ -20,3 +20,7 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Input_Pointer",
 ]
+
+[dev-dependencies]
+easytab = { path = ".", features = ["raw-window-handle"] }
+winit = "0.30.13"
