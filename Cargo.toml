@@ -43,6 +43,18 @@ features = [
     "Win32_UI_Input_Pointer",
 ]
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6.4" }
+objc2-foundation = { version = "0.3.2", default-features = false }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+    "NSResponder",
+    "NSEvent",
+    "NSView",
+    "NSWindow",
+] }
+ctor = "1.0.9"
+dtor = "1.0.5"
+
 [dev-dependencies]
 easytab = { path = ".", features = ["raw-window-handle"] }
 winit = "0.30"

@@ -11,7 +11,14 @@ use win32::TabletData;
 #[cfg(target_os = "windows")]
 pub use win32::WindowsError;
 
-#[cfg(not(any(target_os = "windows")))]
+#[cfg(target_os = "macos")]
+pub mod macos;
+#[cfg(target_os = "macos")]
+pub use macos::MacosError;
+#[cfg(target_os = "macos")]
+use macos::TabletData;
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 compile_error!("easytab is not yet implemented for this platform");
 
 #[derive(Error, Clone, Debug)]
@@ -19,6 +26,10 @@ pub enum EasyTabError {
     #[cfg(target_os = "windows")]
     #[error("windows error: {0}")]
     WindowsError(#[from] WindowsError),
+
+    #[cfg(target_os = "macos")]
+    #[error("macos error: {0}")]
+    MacosError(#[from] MacosError),
 
     #[cfg(feature = "raw-window-handle")]
     #[error("{0}")]
@@ -34,14 +45,19 @@ pub type EasyTabResult<T> = std::result::Result<T, EasyTabError>;
 /// Initialisation options for the tablet.
 #[derive(Clone)]
 pub struct EasyTabOptions {
-    /// Divisor used to normalise raw pressure to 0.0..=1.0. Defaults to 1024.0.
+    /// Divisor used to normalise raw pressure to 0.0..=1.0. Default is platform specific:
+    /// - Windows: 1024.0
+    /// - macOS: 1.0 (pressure is already a float between 0.0 and 1.0)
     pub pressure_normalization: f32,
 }
 
 impl Default for EasyTabOptions {
     fn default() -> Self {
         Self {
+            #[cfg(target_os = "windows")]
             pressure_normalization: 1024.0,
+            #[cfg(target_os = "macos")]
+            pressure_normalization: 1.0,
         }
     }
 }
@@ -79,12 +95,30 @@ pub(crate) struct TabletInner {
 
 pub struct EasyTablet {
     pub(crate) inner: Rc<TabletInner>,
+    /// Platform specific data
     pub(crate) data: TabletData,
+}
+
+impl EasyTablet {
+    pub fn enable(&self) {
+        self.inner.enabled.set(true);
+    }
+
+    pub fn disable(&self) {
+        self.inner.enabled.set(false);
+    }
 }
 
 #[cfg(feature = "raw-window-handle")]
 impl EasyTablet {
     pub fn from_window<W: raw_window_handle::HasWindowHandle>(window: &W) -> EasyTabResult<Self> {
+        Self::from_window_options(window, EasyTabOptions::default())
+    }
+
+    pub fn from_window_options<W: raw_window_handle::HasWindowHandle>(
+        window: &W,
+        options: EasyTabOptions,
+    ) -> EasyTabResult<Self> {
         use raw_window_handle::RawWindowHandle;
 
         let raw = window
@@ -94,7 +128,11 @@ impl EasyTablet {
 
         match raw {
             #[cfg(target_os = "windows")]
-            RawWindowHandle::Win32(h) => Self::init(h.hwnd.get() as usize),
+            RawWindowHandle::Win32(h) => Self::init_rwh(h.hwnd.get() as usize, options),
+            #[cfg(target_os = "macos")]
+            RawWindowHandle::AppKit(h) => Self::init_appkit_rwh(h.ns_view, options),
+            #[cfg(target_os = "macos")]
+            RawWindowHandle::UiKit(..) => todo!("UiKit support"),
             _ => Err(EasyTabError::UnsupportedPlatform),
         }
     }

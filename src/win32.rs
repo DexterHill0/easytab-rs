@@ -45,6 +45,14 @@ impl EasyTablet {
         Self::init_options(HANDLE_PTR(hwnd.into()), EasyTabOptions::default())
     }
 
+    #[cfg(feature = "raw-window-handle")]
+    pub(crate) fn init_rwh<W: Into<usize>>(
+        hwnd: W,
+        options: EasyTabOptions,
+    ) -> EasyTabResult<Self> {
+        Self::init_options(HANDLE_PTR(hwnd.into()), options)
+    }
+
     pub fn init_options(hwnd: HANDLE_PTR, options: EasyTabOptions) -> EasyTabResult<Self> {
         let result = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
 
@@ -79,14 +87,6 @@ impl EasyTablet {
                 subclass_data_ptr: ptr,
             },
         })
-    }
-
-    pub fn enable(&self) {
-        self.inner.enabled.set(true);
-    }
-
-    pub fn disable(&self) {
-        self.inner.enabled.set(false);
     }
 
     /// Drains all pending tablet events. Call this once per frame.
