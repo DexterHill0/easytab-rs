@@ -6,12 +6,13 @@
 `easytab` is a Rust crate built for vendor-agnostic interaction with pen & tablet devices. It aims to have a very simple interface that can be easily integrated with other code.
 
 ```toml
-easytab = "0.2.0"
+easytab = "0.3.0"
 ```
 
 ## Features
 
 - Windows support.
+- MacOS (AppKit) support.
 - [`raw-window-handle`](https://crates.io/crates/raw-window-handle) support with the `raw-window-handle` feature.
 
 ## Example
@@ -22,6 +23,6 @@ See `examples/basic.rs` for an example with `winit`.
 
 - [x] Implement basic Windows support.
 - [ ] Implement basic Linux support.
-- [ ] Implement basic MacOS support.
+- [x] Implement basic MacOS support.
 - [ ] Implement support for selecting specific tablet devices.
   - *I have this functionality mostly implemented but I'm yet to decide if it is: A) useful, and B) within scope of this crate.*
