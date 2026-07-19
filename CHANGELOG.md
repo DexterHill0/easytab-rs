@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/DexterHill0/easytab-rs/compare/easytab@v0.2.0...easytab@v0.3.0) (2026-07-19)
+
+
+### Features
+
+* add macos AppKit support ([94a780b](https://github.com/DexterHill0/easytab-rs/commit/94a780bc3ae22fd820683204cb07e65f717044db))
+
+
+### Bug Fixes
+
+* add macos to ci runners ([f8b587d](https://github.com/DexterHill0/easytab-rs/commit/f8b587ddcea875e2daadd3b4344fb88f415a97b0))
+
 ## [0.2.0](https://github.com/DexterHill0/easytab-rs/compare/easytab@v0.1.0...easytab@v0.2.0) (2026-05-28)
 
 
